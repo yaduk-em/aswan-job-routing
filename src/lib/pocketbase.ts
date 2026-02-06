@@ -13,10 +13,23 @@ export function getPocketBase(): PocketBase {
 export async function authenticatePB(): Promise<PocketBase> {
   const client = getPocketBase();
   if (!client.authStore.isValid) {
-    await client.admins.authWithPassword(
-      PB_CONFIG.auth.email,
-      PB_CONFIG.auth.password
-    );
+    // Use legacy /api/admins/auth-with-password endpoint for older PocketBase versions
+    const response = await fetch(`${PB_CONFIG.url}/api/admins/auth-with-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identity: PB_CONFIG.auth.email,
+        password: PB_CONFIG.auth.password,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(`Auth failed: ${err.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    client.authStore.save(data.token, data.admin);
   }
   return client;
 }
