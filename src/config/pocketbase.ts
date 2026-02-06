@@ -5,12 +5,12 @@
 
 export const PB_CONFIG = {
   // PocketBase server URL
-  url: "https://your-pocketbase-url.com",
+  url: "https://pb.dev.industryapps.net/ASWN",
 
   // Authentication credentials (admin or user)
   auth: {
-    email: "admin@example.com",
-    password: "your-password",
+    email: "abhi-s@industryapps.net",
+    password: "Linux@1994",
   },
 
   // Collection names - change these if your collections have different names
