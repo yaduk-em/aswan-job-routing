@@ -98,28 +98,23 @@ const JobRoutingForm = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="industrial-header">
-        <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
+      <header className="bg-primary text-primary-foreground shadow-md">
+        <div className="w-full px-6 lg:px-10 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-              <Cog className="w-6 h-6 text-accent-foreground" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">
-                Aswan Job Routing
-              </h1>
-              <p className="text-sm opacity-70">Manufacturing Job Entry System</p>
-            </div>
+            <Cog className="w-7 h-7" />
+            <h1 className="text-xl font-bold tracking-tight">
+              Aswan Job Routing
+            </h1>
           </div>
           <div className="status-indicator text-primary-foreground">
             <span className="status-dot" />
-            <span className="text-sm opacity-80">Connected</span>
+            <span className="text-sm opacity-90">Connected</span>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <main className="w-full px-6 lg:px-10 py-6 space-y-5">
         {/* Work Order Input */}
         <Card>
           <CardHeader className="pb-4">
@@ -262,7 +257,7 @@ const JobRoutingForm = () => {
                 <Button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold px-8"
+                  className="font-semibold px-8"
                   size="lg"
                 >
                   {isSubmitting ? (
