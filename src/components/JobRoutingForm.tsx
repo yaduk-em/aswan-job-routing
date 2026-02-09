@@ -125,7 +125,7 @@ const JobRoutingForm = () => {
                 Work Order Number
               </Label>
               <div className="flex items-center gap-0">
-                <span className="inline-flex items-center px-4 h-10 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground font-mono text-sm font-medium whitespace-nowrap">
+                <span className="inline-flex items-center px-4 h-10 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium whitespace-nowrap">
                   {PB_CONFIG.workOrderPrefix}
                 </span>
                 <Input
@@ -133,12 +133,12 @@ const JobRoutingForm = () => {
                   value={workOrderSuffix}
                   onChange={(e) => setWorkOrderSuffix(e.target.value)}
                   placeholder="Enter work order number"
-                  className="rounded-l-none font-mono"
+                  className="rounded-l-none"
                   disabled={isSubmitting}
                 />
               </div>
               {workOrderSuffix && (
-                <p className="text-xs text-muted-foreground font-mono">
+                <p className="text-xs text-muted-foreground">
                   Full: {fullWorkOrderNumber}
                 </p>
               )}
@@ -216,7 +216,7 @@ const JobRoutingForm = () => {
                         handleQuantityChange(subId, e.target.value)
                       }
                       placeholder="0"
-                      className="h-9 font-mono text-center"
+                      className="h-9 text-center"
                       disabled={isSubmitting}
                     />
                   </div>
@@ -295,19 +295,19 @@ const JobRoutingForm = () => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold font-mono">
+                  <p className="text-2xl font-bold">
                     {result.totalJobs}
                   </p>
                   <p className="text-xs text-muted-foreground">Jobs Created</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold font-mono">
+                  <p className="text-2xl font-bold">
                     {result.totalRoutes}
                   </p>
                   <p className="text-xs text-muted-foreground">Routes Created</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted">
-                  <p className="text-2xl font-bold font-mono">
+                  <p className="text-2xl font-bold">
                     {result.totalMachines}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -352,12 +352,12 @@ const JobRoutingForm = () => {
                   className="flex items-center justify-between text-sm py-2 px-3 rounded bg-muted/50"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs text-muted-foreground w-6">
+                    <span className="text-xs text-muted-foreground w-6">
                       {op.sequence}
                     </span>
                     <span className="font-medium">{op.name}</span>
                   </div>
-                  <span className="font-mono text-xs industrial-badge">
+                  <span className="text-xs industrial-badge">
                     {op.machineId}
                   </span>
                 </div>
