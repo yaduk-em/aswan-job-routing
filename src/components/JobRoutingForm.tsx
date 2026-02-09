@@ -13,6 +13,8 @@ const JobRoutingForm = () => {
   const [numberOfSubIds, setNumberOfSubIds] = useState<number | "">("");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [result, setResult] = useState<{
     totalJobs: number;
     totalRoutes: number;
@@ -33,8 +35,18 @@ const JobRoutingForm = () => {
     return ids;
   }, [numberOfSubIds]);
 
+  // Validation helpers
+  const workOrderError = !workOrderSuffix.trim() ? "Work order number is required" : "";
+  const subIdCountError =
+    numberOfSubIds === "" || numberOfSubIds <= 0
+      ? "Enter a valid number of sub IDs (minimum 1)"
+      : "";
+  const hasAnyQuantity = subIdList.some((id) => quantities[id] && quantities[id] > 0);
+  const showError = (field: string) => submitAttempted || touched[field];
+
   const handleQuantityChange = (subId: string, value: string) => {
     const num = parseInt(value, 10);
+    setTouched((prev) => ({ ...prev, [`qty-${subId}`]: true }));
     setQuantities((prev) => ({
       ...prev,
       [subId]: isNaN(num) || num < 0 ? 0 : num,
@@ -42,12 +54,10 @@ const JobRoutingForm = () => {
   };
 
   const handleSubmit = async () => {
-    if (!workOrderSuffix.trim()) {
-      toast.error("Please enter the work order number");
-      return;
-    }
-    if (!numberOfSubIds || numberOfSubIds <= 0) {
-      toast.error("Please enter a valid number of sub IDs");
+    setSubmitAttempted(true);
+
+    if (workOrderError || subIdCountError) {
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -59,7 +69,7 @@ const JobRoutingForm = () => {
       .filter((e) => e.quantity > 0);
 
     if (subIdEntries.length === 0) {
-      toast.error("Please enter at least one quantity");
+      toast.error("Please enter at least one quantity greater than 0");
       return;
     }
 
@@ -122,7 +132,7 @@ const JobRoutingForm = () => {
           <CardContent className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="workOrder" className="text-sm font-semibold">
-                Work Order Number
+                Work Order Number <span className="text-destructive">*</span>
               </Label>
               <div className="flex items-center gap-0">
                 <span className="inline-flex items-center px-4 h-10 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium whitespace-nowrap">
@@ -132,11 +142,16 @@ const JobRoutingForm = () => {
                   id="workOrder"
                   value={workOrderSuffix}
                   onChange={(e) => setWorkOrderSuffix(e.target.value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, workOrder: true }))}
                   placeholder="Enter work order number"
-                  className="rounded-l-none"
+                  className={`rounded-l-none ${showError("workOrder") && workOrderError ? "border-destructive" : ""}`}
                   disabled={isSubmitting}
+                  required
                 />
               </div>
+              {showError("workOrder") && workOrderError && (
+                <p className="text-xs text-destructive">{workOrderError}</p>
+              )}
               {workOrderSuffix && (
                 <p className="text-xs text-muted-foreground">
                   Full: {fullWorkOrderNumber}
@@ -146,7 +161,7 @@ const JobRoutingForm = () => {
 
             <div className="space-y-2">
               <Label htmlFor="subIdCount" className="text-sm font-semibold">
-                Number of Sub IDs
+                Number of Sub IDs <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="subIdCount"
@@ -158,10 +173,15 @@ const JobRoutingForm = () => {
                   setNumberOfSubIds(val === "" ? "" : parseInt(val, 10));
                   setQuantities({});
                 }}
+                onBlur={() => setTouched((prev) => ({ ...prev, subIdCount: true }))}
                 placeholder="Enter number of sub IDs"
-                className="max-w-xs"
+                className={`max-w-xs ${showError("subIdCount") && subIdCountError ? "border-destructive" : ""}`}
                 disabled={isSubmitting}
+                required
               />
+              {showError("subIdCount") && subIdCountError && (
+                <p className="text-xs text-destructive">{subIdCountError}</p>
+              )}
               {numberOfSubIds !== "" && numberOfSubIds > 0 && (
                 <p className="text-xs text-muted-foreground">
                   This will create Sub IDs 1–{numberOfSubIds} + Sub ID 0 (Main
@@ -210,15 +230,20 @@ const JobRoutingForm = () => {
                     <Input
                       id={`qty-${subId}`}
                       type="number"
-                      min={0}
+                      min={1}
                       value={quantities[subId] ?? ""}
                       onChange={(e) =>
                         handleQuantityChange(subId, e.target.value)
                       }
-                      placeholder="0"
-                      className="h-9 text-center"
+                      onBlur={() => setTouched((prev) => ({ ...prev, [`qty-${subId}`]: true }))}
+                      placeholder="Enter qty"
+                      className={`h-9 text-center ${showError(`qty-${subId}`) && (!quantities[subId] || quantities[subId] <= 0) ? "border-destructive" : ""}`}
                       disabled={isSubmitting}
+                      required
                     />
+                    {showError(`qty-${subId}`) && (!quantities[subId] || quantities[subId] <= 0) && (
+                      <p className="text-xs text-destructive">Required</p>
+                    )}
                   </div>
                 ))}
               </div>
