@@ -84,6 +84,7 @@ export async function createJobEntries(
                 isCompleted: false,
                 isLastOperation: isLast,
                 status: "",
+                runHrsPer: String(Math.floor(Math.random() * 10) + 1),
               });
             result.totalRoutes++;
 
