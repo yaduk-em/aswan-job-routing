@@ -106,10 +106,6 @@ const JobRoutingForm = () => {
               Aswan Job Routing
             </h1>
           </div>
-          <div className="status-indicator text-primary-foreground">
-            <span className="status-dot" />
-            <span className="text-sm opacity-90">Connected</span>
-          </div>
         </div>
       </header>
 
@@ -129,14 +125,14 @@ const JobRoutingForm = () => {
                 Work Order Number
               </Label>
               <div className="flex items-center gap-0">
-                <span className="inline-flex items-center px-4 h-10 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground font-mono text-sm font-medium">
+                <span className="inline-flex items-center px-4 h-10 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground font-mono text-sm font-medium whitespace-nowrap">
                   {PB_CONFIG.workOrderPrefix}
                 </span>
                 <Input
                   id="workOrder"
                   value={workOrderSuffix}
                   onChange={(e) => setWorkOrderSuffix(e.target.value)}
-                  placeholder="123"
+                  placeholder="Enter work order number"
                   className="rounded-l-none font-mono"
                   disabled={isSubmitting}
                 />
