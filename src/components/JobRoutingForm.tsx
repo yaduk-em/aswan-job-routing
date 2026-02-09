@@ -41,7 +41,7 @@ const JobRoutingForm = () => {
     numberOfSubIds === "" || numberOfSubIds <= 0
       ? "Enter a valid number of sub IDs (minimum 1)"
       : "";
-  const hasAnyQuantity = subIdList.some((id) => quantities[id] && quantities[id] > 0);
+  const allQuantitiesValid = subIdList.length > 0 && subIdList.every((id) => quantities[id] && quantities[id] >= 1);
   const showError = (field: string) => submitAttempted || touched[field];
 
   const handleQuantityChange = (subId: string, value: string) => {
@@ -56,22 +56,30 @@ const JobRoutingForm = () => {
   const handleSubmit = async () => {
     setSubmitAttempted(true);
 
-    if (workOrderError || subIdCountError) {
-      toast.error("Please fill in all required fields");
+    // Mark all quantity fields as touched so errors show
+    const allTouched: Record<string, boolean> = { workOrder: true, subIdCount: true };
+    subIdList.forEach((id) => { allTouched[`qty-${id}`] = true; });
+    setTouched((prev) => ({ ...prev, ...allTouched }));
+
+    if (workOrderError) {
+      toast.error("Work order number is required");
       return;
     }
 
-    const subIdEntries = subIdList
-      .map((subId) => ({
-        subId,
-        quantity: quantities[subId] || 0,
-      }))
-      .filter((e) => e.quantity > 0);
-
-    if (subIdEntries.length === 0) {
-      toast.error("Please enter at least one quantity greater than 0");
+    if (subIdCountError) {
+      toast.error("Please enter a valid number of sub IDs");
       return;
     }
+
+    if (!allQuantitiesValid) {
+      toast.error("All sub ID quantities must be at least 1");
+      return;
+    }
+
+    const subIdEntries = subIdList.map((subId) => ({
+      subId,
+      quantity: quantities[subId] || 0,
+    }));
 
     setIsSubmitting(true);
     setResult(null);
@@ -198,8 +206,9 @@ const JobRoutingForm = () => {
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Layers className="w-5 h-5 text-accent" />
-                Sub ID Quantities
+                Sub ID Quantities <span className="text-destructive text-sm">*</span>
               </CardTitle>
+              <p className="text-xs text-muted-foreground">All quantities are required and must be at least 1</p>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -252,7 +261,7 @@ const JobRoutingForm = () => {
         )}
 
         {/* Preview & Submit */}
-        {subIdList.length > 0 && totalQuantity > 0 && (
+        {subIdList.length > 0 && (
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
