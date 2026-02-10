@@ -14,6 +14,7 @@ const JobRoutingForm = () => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [custOrderId, setCustOrderId] = useState("");
   const [custOrderLineNo, setCustOrderLineNo] = useState<number | "">("");
+  const [custOrderWantDate, setCustOrderWantDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteWorkOrderSuffix, setDeleteWorkOrderSuffix] = useState("");
@@ -47,6 +48,7 @@ const JobRoutingForm = () => {
     custOrderLineNo === "" || custOrderLineNo <= 0
       ? "Enter a valid line number (minimum 1)"
       : "";
+  const custOrderWantDateError = !custOrderWantDate.trim() ? "Customer Want Date is required" : "";
   const subIdCountError =
     numberOfSubIds === "" || numberOfSubIds <= 0
       ? "Enter a valid number of sub IDs (minimum 1)"
@@ -67,7 +69,7 @@ const JobRoutingForm = () => {
     setSubmitAttempted(true);
 
     // Mark all quantity fields as touched so errors show
-    const allTouched: Record<string, boolean> = { workOrder: true, subIdCount: true, custOrderId: true, custOrderLineNo: true };
+    const allTouched: Record<string, boolean> = { workOrder: true, subIdCount: true, custOrderId: true, custOrderLineNo: true, custOrderWantDate: true };
     subIdList.forEach((id) => { allTouched[`qty-${id}`] = true; });
     setTouched((prev) => ({ ...prev, ...allTouched }));
 
@@ -91,6 +93,11 @@ const JobRoutingForm = () => {
       return;
     }
 
+    if (custOrderWantDateError) {
+      toast.error("Customer Want Date is required");
+      return;
+    }
+
     if (!allQuantitiesValid) {
       toast.error("All sub ID quantities must be at least 1");
       return;
@@ -110,6 +117,7 @@ const JobRoutingForm = () => {
         subIdEntries,
         custOrderId,
         custOrderLineNo: Number(custOrderLineNo),
+        custOrderWantDate,
       });
       setResult(res);
 
@@ -232,6 +240,25 @@ const JobRoutingForm = () => {
                   <p className="text-xs text-destructive">{custOrderLineNoError}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="custOrderWantDate" className="text-sm font-semibold">
+                Customer Want Date <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="custOrderWantDate"
+                type="date"
+                value={custOrderWantDate}
+                onChange={(e) => setCustOrderWantDate(e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, custOrderWantDate: true }))}
+                className={showError("custOrderWantDate") && custOrderWantDateError ? "border-destructive" : ""}
+                disabled={isSubmitting}
+                required
+              />
+              {showError("custOrderWantDate") && custOrderWantDateError && (
+                <p className="text-xs text-destructive">{custOrderWantDateError}</p>
+              )}
             </div>
 
             <div className="space-y-2">

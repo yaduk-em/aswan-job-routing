@@ -6,11 +6,40 @@ interface SubIdEntry {
   quantity: number;
 }
 
+// Helper functions for random value generation
+function randomFromArray<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function randomString(length: number = 8): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+function randomNumber(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function formatDateISO(date: Date): string {
+  return date.toISOString();
+}
+
 interface JobCreationInput {
   workOrderNumber: string;
   subIdEntries: SubIdEntry[];
   custOrderId: string;
   custOrderLineNo: number;
+  custOrderWantDate: string;
 }
 
 interface CreationResult {
@@ -44,73 +73,113 @@ export async function createJobEntries(
   };
 
   // Step 0: Create erpConsolidateData entries (one per subId)
-  const today = new Date().toISOString();
+  const today = new Date();
+  const todayISO = formatDateISO(today);
+  const custOrderWantDate = new Date(input.custOrderWantDate);
+  
+  // Arrays for random selection
+  const bomPartIds = ["WE0272", "FLNG_PRTC_2", "FG-40-1558_ REPAIR KIT SV-150"];
+  const woProductCodes = ["_C-FBRCTN-N", "_C-VRM-IS-WLD-R", "_R-ACCU-BOTTL-R"];
+  const operationSeqNos = [10, 20, 30, 40, 50];
+  
+  // Calculate dates
+  const custOrderWantDateISO = formatDateISO(custOrderWantDate);
+  // CUST_ORDER_LINE_WANT_DATE: future date lower than CUST_ORDER_WANT_DATE
+  // It should be between today and CUST_ORDER_WANT_DATE
+  const daysDiff = Math.floor((custOrderWantDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const daysBefore = daysDiff > 0 ? randomNumber(1, Math.min(daysDiff, 7)) : 1;
+  const custOrderLineWantDate = addDays(custOrderWantDate, -daysBefore);
+  const custOrderLineWantDateISO = formatDateISO(custOrderLineWantDate);
+  // WO_RLS_DATE: future date (1-14 days from today)
+  const woRlsDate = addDays(today, randomNumber(1, 14));
+  const woRlsDateISO = formatDateISO(woRlsDate);
+  // WO_WANT_DATE: future date (1-30 days from today)
+  const woWantDate = addDays(today, randomNumber(1, 30));
+  const woWantDateISO = formatDateISO(woWantDate);
+  
   for (const entry of input.subIdEntries) {
     try {
+      // Generate random values for this entry
+      const bomPartId = randomFromArray(bomPartIds);
+      const woProductCode = randomFromArray(woProductCodes);
+      const bomOperationSeqNo = randomFromArray(operationSeqNos);
+      
+      // Generate random dates for other date fields
+      const purcReqDate = addDays(today, randomNumber(0, 30));
+      const purcReqWantDate = addDays(purcReqDate, randomNumber(1, 14));
+      const purcOrderDate = addDays(today, randomNumber(0, 30));
+      const poWantDate = addDays(purcOrderDate, randomNumber(1, 30));
+      const poEtd = addDays(poWantDate, randomNumber(1, 14));
+      const poEta = addDays(poEtd, randomNumber(1, 7));
+      const grnDate = addDays(today, randomNumber(0, 60));
+      const grnCreateDate = addDays(grnDate, randomNumber(0, 7));
+      const invTransDate = addDays(today, randomNumber(0, 60));
+      const invTransCreateDate = addDays(invTransDate, randomNumber(0, 7));
+      
       await pb.collection(collections.erpConsolidateData).create({
         // Transaction info
         TXN_TYPE: "BOM",
         // Customer order info
         CUST_ORDER_ID: input.custOrderId,
         CUST_ORDER_LINE_NO: input.custOrderLineNo,
-        CUST_ORDER_DATE: today,
-        CUST_ORDER_WANT_DATE: today,
-        CUST_ORDER_LINE_WANT_DATE: today,
-        CUST_ORDER_STATUS: "Open",
+        CUST_ORDER_DATE: todayISO,
+        CUST_ORDER_WANT_DATE: custOrderWantDateISO,
+        CUST_ORDER_LINE_WANT_DATE: custOrderLineWantDateISO,
+        CUST_ORDER_STATUS: "R",
         // Work order / BOM info
         BOM_WORKORDER_BASE_ID: input.workOrderNumber,
         BOM_WORKORDER_SUB_ID: String(entry.subId),
-        BOM_WORKORDER_TYPE: "Standard",
-        BOM_WORKORDER_LOT_ID: `LOT-${input.workOrderNumber}-${entry.subId}`,
-        BOM_WORKORDER_SPLIT_ID: "0",
-        BOM_PART_ID: `PART-${input.workOrderNumber}-${entry.subId}`,
+        BOM_WORKORDER_TYPE: "W",
+        BOM_WORKORDER_LOT_ID: randomString(12),
+        BOM_WORKORDER_SPLIT_ID: String(randomNumber(0, 9)),
+        BOM_PART_ID: bomPartId,
         BOM_QTY: entry.quantity,
-        BOM_OPERATION_SEQ_NO: 10,
+        BOM_OPERATION_SEQ_NO: bomOperationSeqNo,
         BOM_PIECE_NO: Number(entry.subId),
         // Work order assembly & status
-        WO_ASSMB_PART_ID: `ASSY-${input.workOrderNumber}-${entry.subId}`,
+        WO_ASSMB_PART_ID: randomString(10),
         WO_ASSMB_QTY: entry.quantity,
-        WO_CREATE_DATE: today,
-        WO_RLS_DATE: today,
-        WO_WANT_DATE: today,
-        WO_STATUS: "Created",
-        WO_PRODUCT_CODE: `PROD-${input.custOrderId}`,
-        WO_ASW_STATUS: "Pending",
+        WO_CREATE_DATE: todayISO,
+        WO_RLS_DATE: woRlsDateISO,
+        WO_WANT_DATE: woWantDateISO,
+        WO_STATUS: "R",
+        WO_PRODUCT_CODE: woProductCode,
+        WO_ASW_STATUS: randomString(6),
         // Part info
-        PART_IS_MANUFACTURE: "Y",
-        PART_CATEGORY: "Manufactured",
-        // Purchase requisition (defaults)
-        PURC_REQ_ID: "",
-        PURC_REQ_LINE_NO: 0,
-        PURC_REQ_PART_ID: "",
-        PURC_REQ_QTY: 0,
-        PURC_REQ_DATE: today,
-        PURC_REQ_WANT_DATE: today,
-        // Purchase order (defaults)
-        PURC_ORDER_ID: "",
-        PO_LINE_NO: 0,
-        PO_QTY: 0,
-        PURC_ORDER_DATE: today,
-        PURC_ORDER_STATUS: "",
-        PO_WANT_DATE: today,
-        PO_ETD: today,
-        PO_ETA: today,
-        // GRN (defaults)
-        GRN_ID: "",
-        GRN_LINE_NO: 0,
-        GRN_QTY: 0,
-        GRN_INSPECT_QTY: 0,
-        GRN_REJECTED_QTY: 0,
-        GRN_DATE: today,
-        GRN_CREATE_DATE: today,
-        // Inventory transaction (defaults)
-        INV_TRANS_ID: 0,
-        INV_TRANS_PART_ID: "",
-        INV_TRANS_TYPE: "",
-        INV_TRANS_CLASS: "",
-        INV_TRANS_QTY: 0,
-        INV_TRANS_DATE: today,
-        INV_TRANS_CREATE_DATE: today,
+        PART_IS_MANUFACTURE: randomFromArray(["Y", "N"]),
+        PART_CATEGORY: "RM",
+        // Purchase requisition (random values)
+        PURC_REQ_ID: randomString(10),
+        PURC_REQ_LINE_NO: randomNumber(1, 100),
+        PURC_REQ_PART_ID: randomString(10),
+        PURC_REQ_QTY: randomNumber(1, 1000),
+        PURC_REQ_DATE: formatDateISO(purcReqDate),
+        PURC_REQ_WANT_DATE: formatDateISO(purcReqWantDate),
+        // Purchase order (random values)
+        PURC_ORDER_ID: randomString(10),
+        PO_LINE_NO: randomNumber(1, 100),
+        PO_QTY: randomNumber(1, 1000),
+        PURC_ORDER_DATE: formatDateISO(purcOrderDate),
+        PURC_ORDER_STATUS: randomString(6),
+        PO_WANT_DATE: formatDateISO(poWantDate),
+        PO_ETD: formatDateISO(poEtd),
+        PO_ETA: formatDateISO(poEta),
+        // GRN (random values)
+        GRN_ID: randomString(10),
+        GRN_LINE_NO: randomNumber(1, 100),
+        GRN_QTY: randomNumber(1, 1000),
+        GRN_INSPECT_QTY: randomNumber(0, 1000),
+        GRN_REJECTED_QTY: randomNumber(0, 100),
+        GRN_DATE: formatDateISO(grnDate),
+        GRN_CREATE_DATE: formatDateISO(grnCreateDate),
+        // Inventory transaction (random values)
+        INV_TRANS_ID: randomNumber(1000, 9999),
+        INV_TRANS_PART_ID: randomString(10),
+        INV_TRANS_TYPE: randomString(6),
+        INV_TRANS_CLASS: randomString(6),
+        INV_TRANS_QTY: randomNumber(1, 1000),
+        INV_TRANS_DATE: formatDateISO(invTransDate),
+        INV_TRANS_CREATE_DATE: formatDateISO(invTransCreateDate),
       });
       result.totalConsolidateEntries++;
     } catch (e: any) {
