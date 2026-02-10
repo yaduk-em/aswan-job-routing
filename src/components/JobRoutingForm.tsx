@@ -242,54 +242,56 @@ const JobRoutingForm = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="custOrderWantDate" className="text-sm font-semibold">
-                Customer Want Date <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="custOrderWantDate"
-                type="date"
-                value={custOrderWantDate}
-                onChange={(e) => setCustOrderWantDate(e.target.value)}
-                onBlur={() => setTouched((prev) => ({ ...prev, custOrderWantDate: true }))}
-                className={showError("custOrderWantDate") && custOrderWantDateError ? "border-destructive" : ""}
-                disabled={isSubmitting}
-                required
-              />
-              {showError("custOrderWantDate") && custOrderWantDateError && (
-                <p className="text-xs text-destructive">{custOrderWantDateError}</p>
-              )}
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="subIdCount" className="text-sm font-semibold">
+                  Number of Sub IDs <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="subIdCount"
+                  type="number"
+                  min={1}
+                  value={numberOfSubIds}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNumberOfSubIds(val === "" ? "" : parseInt(val, 10));
+                    setQuantities({});
+                  }}
+                  onBlur={() => setTouched((prev) => ({ ...prev, subIdCount: true }))}
+                  placeholder="Enter number of sub IDs"
+                  className={showError("subIdCount") && subIdCountError ? "border-destructive" : ""}
+                  disabled={isSubmitting}
+                  required
+                />
+                {showError("subIdCount") && subIdCountError && (
+                  <p className="text-xs text-destructive">{subIdCountError}</p>
+                )}
+                {numberOfSubIds !== "" && numberOfSubIds > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    This will create Sub IDs 1–{numberOfSubIds} + Sub ID 0 (Main
+                    Assembly) = {Number(numberOfSubIds) + 1} total
+                  </p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="subIdCount" className="text-sm font-semibold">
-                Number of Sub IDs <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="subIdCount"
-                type="number"
-                min={1}
-                value={numberOfSubIds}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setNumberOfSubIds(val === "" ? "" : parseInt(val, 10));
-                  setQuantities({});
-                }}
-                onBlur={() => setTouched((prev) => ({ ...prev, subIdCount: true }))}
-                placeholder="Enter number of sub IDs"
-                className={`max-w-xs ${showError("subIdCount") && subIdCountError ? "border-destructive" : ""}`}
-                disabled={isSubmitting}
-                required
-              />
-              {showError("subIdCount") && subIdCountError && (
-                <p className="text-xs text-destructive">{subIdCountError}</p>
-              )}
-              {numberOfSubIds !== "" && numberOfSubIds > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  This will create Sub IDs 1–{numberOfSubIds} + Sub ID 0 (Main
-                  Assembly) = {Number(numberOfSubIds) + 1} total
-                </p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="custOrderWantDate" className="text-sm font-semibold">
+                  Customer Want Date <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="custOrderWantDate"
+                  type="date"
+                  value={custOrderWantDate}
+                  onChange={(e) => setCustOrderWantDate(e.target.value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, custOrderWantDate: true }))}
+                  className={showError("custOrderWantDate") && custOrderWantDateError ? "border-destructive" : ""}
+                  disabled={isSubmitting}
+                  required
+                />
+                {showError("custOrderWantDate") && custOrderWantDateError && (
+                  <p className="text-xs text-destructive">{custOrderWantDateError}</p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
