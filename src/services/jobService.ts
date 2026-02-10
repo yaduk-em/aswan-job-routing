@@ -9,12 +9,15 @@ interface SubIdEntry {
 interface JobCreationInput {
   workOrderNumber: string;
   subIdEntries: SubIdEntry[];
+  custOrderId: string;
+  custOrderLineNo: number;
 }
 
 interface CreationResult {
   totalJobs: number;
   totalRoutes: number;
   totalMachines: number;
+  totalConsolidateEntries: number;
   errors: string[];
 }
 
@@ -28,8 +31,49 @@ export async function createJobEntries(
     totalJobs: 0,
     totalRoutes: 0,
     totalMachines: 0,
+    totalConsolidateEntries: 0,
     errors: [],
   };
+
+  // Step 0: Create erpConsolidateData entries (one per subId)
+  const today = new Date().toISOString();
+  for (const entry of input.subIdEntries) {
+    try {
+      await pb.collection(collections.erpConsolidateData).create({
+        TXN_TYPE: "WO",
+        CUST_ORDER_ID: input.custOrderId,
+        CUST_ORDER_LINE_NO: input.custOrderLineNo,
+        BOM_WORKORDER_BASE_ID: input.workOrderNumber,
+        BOM_WORKORDER_SUB_ID: String(entry.subId),
+        CUST_ORDER_DATE: today,
+        CUST_ORDER_WANT_DATE: "",
+        CUST_ORDER_LINE_WANT_DATE: "",
+        BOM_PART_ID: "",
+        CUST_ORDER_STATUS: "Open",
+        WO_ASSMB_PART_ID: "",
+        WO_ASSMB_QTY: entry.quantity,
+        WO_CREATE_DATE: today,
+        WO_RLS_DATE: "",
+        WO_WANT_DATE: "",
+        WO_STATUS: "Created",
+        WO_PRODUCT_CODE: "",
+        WO_ASW_STATUS: "",
+        BOM_WORKORDER_TYPE: "",
+        BOM_WORKORDER_LOT_ID: "",
+        BOM_QTY: entry.quantity,
+        BOM_WORKORDER_SPLIT_ID: "",
+        BOM_OPERATION_SEQ_NO: 0,
+        BOM_PIECE_NO: 0,
+        PART_IS_MANUFACTURE: "",
+        PART_CATEGORY: "",
+      });
+      result.totalConsolidateEntries++;
+    } catch (e: any) {
+      result.errors.push(
+        `ERP Consolidate error for ${input.workOrderNumber}-${entry.subId}: ${e.message}`
+      );
+    }
+  }
 
   // Pre-fetch machine records for all operations
   const machineRecordMap: Record<string, string> = {};
