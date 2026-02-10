@@ -12,6 +12,8 @@ const JobRoutingForm = () => {
   const [workOrderSuffix, setWorkOrderSuffix] = useState("");
   const [numberOfSubIds, setNumberOfSubIds] = useState<number | "">("");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [custOrderId, setCustOrderId] = useState("");
+  const [custOrderLineNo, setCustOrderLineNo] = useState<number | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -19,6 +21,7 @@ const JobRoutingForm = () => {
     totalJobs: number;
     totalRoutes: number;
     totalMachines: number;
+    totalConsolidateEntries: number;
     errors: string[];
   } | null>(null);
 
@@ -37,6 +40,11 @@ const JobRoutingForm = () => {
 
   // Validation helpers
   const workOrderError = !workOrderSuffix.trim() ? "Work order number is required" : "";
+  const custOrderIdError = !custOrderId.trim() ? "Sales order ID is required" : "";
+  const custOrderLineNoError =
+    custOrderLineNo === "" || custOrderLineNo <= 0
+      ? "Enter a valid line number (minimum 1)"
+      : "";
   const subIdCountError =
     numberOfSubIds === "" || numberOfSubIds <= 0
       ? "Enter a valid number of sub IDs (minimum 1)"
@@ -57,7 +65,7 @@ const JobRoutingForm = () => {
     setSubmitAttempted(true);
 
     // Mark all quantity fields as touched so errors show
-    const allTouched: Record<string, boolean> = { workOrder: true, subIdCount: true };
+    const allTouched: Record<string, boolean> = { workOrder: true, subIdCount: true, custOrderId: true, custOrderLineNo: true };
     subIdList.forEach((id) => { allTouched[`qty-${id}`] = true; });
     setTouched((prev) => ({ ...prev, ...allTouched }));
 
@@ -68,6 +76,16 @@ const JobRoutingForm = () => {
 
     if (subIdCountError) {
       toast.error("Please enter a valid number of sub IDs");
+      return;
+    }
+
+    if (custOrderIdError) {
+      toast.error("Sales order ID is required");
+      return;
+    }
+
+    if (custOrderLineNoError) {
+      toast.error("Please enter a valid line number");
       return;
     }
 
@@ -88,12 +106,14 @@ const JobRoutingForm = () => {
       const res = await createJobEntries({
         workOrderNumber: fullWorkOrderNumber,
         subIdEntries,
+        custOrderId,
+        custOrderLineNo: Number(custOrderLineNo),
       });
       setResult(res);
 
       if (res.errors.length === 0) {
         toast.success(
-          `Successfully created ${res.totalJobs} jobs, ${res.totalRoutes} routes, ${res.totalMachines} machine entries`
+          `Created ${res.totalConsolidateEntries} ERP entries, ${res.totalJobs} jobs, ${res.totalRoutes} routes, ${res.totalMachines} machines`
         );
       } else {
         toast.warning(`Completed with ${res.errors.length} warning(s)`);
@@ -165,6 +185,51 @@ const JobRoutingForm = () => {
                   Full: {fullWorkOrderNumber}
                 </p>
               )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="custOrderId" className="text-sm font-semibold">
+                  Sales Order ID <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="custOrderId"
+                  value={custOrderId}
+                  onChange={(e) => setCustOrderId(e.target.value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, custOrderId: true }))}
+                  placeholder="Enter sales order ID"
+                  className={showError("custOrderId") && custOrderIdError ? "border-destructive" : ""}
+                  disabled={isSubmitting}
+                  required
+                />
+                {showError("custOrderId") && custOrderIdError && (
+                  <p className="text-xs text-destructive">{custOrderIdError}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="custOrderLineNo" className="text-sm font-semibold">
+                  Sales Order Line No <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="custOrderLineNo"
+                  type="number"
+                  min={1}
+                  value={custOrderLineNo}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustOrderLineNo(val === "" ? "" : parseInt(val, 10));
+                  }}
+                  onBlur={() => setTouched((prev) => ({ ...prev, custOrderLineNo: true }))}
+                  placeholder="Enter line number"
+                  className={showError("custOrderLineNo") && custOrderLineNoError ? "border-destructive" : ""}
+                  disabled={isSubmitting}
+                  required
+                />
+                {showError("custOrderLineNo") && custOrderLineNoError && (
+                  <p className="text-xs text-destructive">{custOrderLineNoError}</p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">

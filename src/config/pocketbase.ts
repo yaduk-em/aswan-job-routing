@@ -19,6 +19,7 @@ export const PB_CONFIG = {
     jobProductReceipeRoutes: "ASWNDUBAI_jobProductReceipeRoutes",
     receipeRouteMachines: "ASWNDUBAI_receipeRouteMachines",
     machineMaster: "ASWNDUBAI_machineMaster",
+    erpConsolidateData: "ASWNDUBAI_erpConsolidateData",
   },
 
   // Work order prefix
