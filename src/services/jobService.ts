@@ -49,7 +49,7 @@ export async function createJobEntries(
     try {
       await pb.collection(collections.erpConsolidateData).create({
         // Transaction info
-        TXN_TYPE: "WO",
+        TXN_TYPE: "BOM",
         // Customer order info
         CUST_ORDER_ID: input.custOrderId,
         CUST_ORDER_LINE_NO: input.custOrderLineNo,
@@ -84,33 +84,33 @@ export async function createJobEntries(
         PURC_REQ_LINE_NO: 0,
         PURC_REQ_PART_ID: "",
         PURC_REQ_QTY: 0,
-        PURC_REQ_DATE: "",
-        PURC_REQ_WANT_DATE: "",
+        PURC_REQ_DATE: today,
+        PURC_REQ_WANT_DATE: today,
         // Purchase order (defaults)
         PURC_ORDER_ID: "",
         PO_LINE_NO: 0,
         PO_QTY: 0,
-        PURC_ORDER_DATE: "",
+        PURC_ORDER_DATE: today,
         PURC_ORDER_STATUS: "",
-        PO_WANT_DATE: "",
-        PO_ETD: "",
-        PO_ETA: "",
+        PO_WANT_DATE: today,
+        PO_ETD: today,
+        PO_ETA: today,
         // GRN (defaults)
         GRN_ID: "",
         GRN_LINE_NO: 0,
         GRN_QTY: 0,
         GRN_INSPECT_QTY: 0,
         GRN_REJECTED_QTY: 0,
-        GRN_DATE: "",
-        GRN_CREATE_DATE: "",
+        GRN_DATE: today,
+        GRN_CREATE_DATE: today,
         // Inventory transaction (defaults)
         INV_TRANS_ID: 0,
         INV_TRANS_PART_ID: "",
         INV_TRANS_TYPE: "",
         INV_TRANS_CLASS: "",
         INV_TRANS_QTY: 0,
-        INV_TRANS_DATE: "",
-        INV_TRANS_CREATE_DATE: "",
+        INV_TRANS_DATE: today,
+        INV_TRANS_CREATE_DATE: today,
       });
       result.totalConsolidateEntries++;
     } catch (e: any) {
@@ -151,6 +151,36 @@ export async function createJobEntries(
           subId: String(subId),
           jobQty: "1",
           displayName,
+          // Product info
+          productCode: `PROD-${input.workOrderNumber}-${subId}`,
+          productDescription: `Product for ${input.workOrderNumber}-${subId}`,
+          productType: "Standard",
+          partId: `PART-${input.workOrderNumber}-${subId}`,
+          // Dates
+          creationDate: today,
+          lastUpdateDate: today,
+          orderStartDate: today,
+          orderEndDate: today,
+          salesOrderCreationDate: today,
+          preferedDeliveryDate: today,
+          syncTimestamp: new Date(),
+          jobCompletionDate: null,
+          // Sales order info (from input)
+          salesOrderNumber: input.custOrderId,
+          soLineNumber: String(input.custOrderLineNo),
+          salesOrderLineNumber: String(input.custOrderLineNo),
+          salesOrderQuantity: String(quantity),
+          // Customer info
+          customerName: `Customer-${input.custOrderId}`,
+          customerNumber: `CUST-${input.custOrderId}`,
+          // Status fields
+          jobStatus: "Created",
+          isInProgress: false,
+          isCompleted: false,
+          syncStatus: "Pending",
+          // Additional fields
+          drawingTag: "",
+          serialNumber: "",
         });
         result.totalJobs++;
 
