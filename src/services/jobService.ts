@@ -21,6 +21,14 @@ interface CreationResult {
   errors: string[];
 }
 
+interface DeleteResult {
+  deletedJobs: number;
+  deletedRoutes: number;
+  deletedMachines: number;
+  deletedConsolidateEntries: number;
+  errors: string[];
+}
+
 export async function createJobEntries(
   input: JobCreationInput
 ): Promise<CreationResult> {
@@ -40,32 +48,69 @@ export async function createJobEntries(
   for (const entry of input.subIdEntries) {
     try {
       await pb.collection(collections.erpConsolidateData).create({
+        // Transaction info
         TXN_TYPE: "WO",
+        // Customer order info
         CUST_ORDER_ID: input.custOrderId,
         CUST_ORDER_LINE_NO: input.custOrderLineNo,
+        CUST_ORDER_DATE: today,
+        CUST_ORDER_WANT_DATE: today,
+        CUST_ORDER_LINE_WANT_DATE: today,
+        CUST_ORDER_STATUS: "Open",
+        // Work order / BOM info
         BOM_WORKORDER_BASE_ID: input.workOrderNumber,
         BOM_WORKORDER_SUB_ID: String(entry.subId),
-        CUST_ORDER_DATE: today,
-        CUST_ORDER_WANT_DATE: "",
-        CUST_ORDER_LINE_WANT_DATE: "",
-        BOM_PART_ID: "",
-        CUST_ORDER_STATUS: "Open",
-        WO_ASSMB_PART_ID: "",
+        BOM_WORKORDER_TYPE: "Standard",
+        BOM_WORKORDER_LOT_ID: `LOT-${input.workOrderNumber}-${entry.subId}`,
+        BOM_WORKORDER_SPLIT_ID: "0",
+        BOM_PART_ID: `PART-${input.workOrderNumber}-${entry.subId}`,
+        BOM_QTY: entry.quantity,
+        BOM_OPERATION_SEQ_NO: 10,
+        BOM_PIECE_NO: Number(entry.subId),
+        // Work order assembly & status
+        WO_ASSMB_PART_ID: `ASSY-${input.workOrderNumber}-${entry.subId}`,
         WO_ASSMB_QTY: entry.quantity,
         WO_CREATE_DATE: today,
-        WO_RLS_DATE: "",
-        WO_WANT_DATE: "",
+        WO_RLS_DATE: today,
+        WO_WANT_DATE: today,
         WO_STATUS: "Created",
-        WO_PRODUCT_CODE: "",
-        WO_ASW_STATUS: "",
-        BOM_WORKORDER_TYPE: "",
-        BOM_WORKORDER_LOT_ID: "",
-        BOM_QTY: entry.quantity,
-        BOM_WORKORDER_SPLIT_ID: "",
-        BOM_OPERATION_SEQ_NO: 0,
-        BOM_PIECE_NO: 0,
-        PART_IS_MANUFACTURE: "",
-        PART_CATEGORY: "",
+        WO_PRODUCT_CODE: `PROD-${input.custOrderId}`,
+        WO_ASW_STATUS: "Pending",
+        // Part info
+        PART_IS_MANUFACTURE: "Y",
+        PART_CATEGORY: "Manufactured",
+        // Purchase requisition (defaults)
+        PURC_REQ_ID: "",
+        PURC_REQ_LINE_NO: 0,
+        PURC_REQ_PART_ID: "",
+        PURC_REQ_QTY: 0,
+        PURC_REQ_DATE: "",
+        PURC_REQ_WANT_DATE: "",
+        // Purchase order (defaults)
+        PURC_ORDER_ID: "",
+        PO_LINE_NO: 0,
+        PO_QTY: 0,
+        PURC_ORDER_DATE: "",
+        PURC_ORDER_STATUS: "",
+        PO_WANT_DATE: "",
+        PO_ETD: "",
+        PO_ETA: "",
+        // GRN (defaults)
+        GRN_ID: "",
+        GRN_LINE_NO: 0,
+        GRN_QTY: 0,
+        GRN_INSPECT_QTY: 0,
+        GRN_REJECTED_QTY: 0,
+        GRN_DATE: "",
+        GRN_CREATE_DATE: "",
+        // Inventory transaction (defaults)
+        INV_TRANS_ID: 0,
+        INV_TRANS_PART_ID: "",
+        INV_TRANS_TYPE: "",
+        INV_TRANS_CLASS: "",
+        INV_TRANS_QTY: 0,
+        INV_TRANS_DATE: "",
+        INV_TRANS_CREATE_DATE: "",
       });
       result.totalConsolidateEntries++;
     } catch (e: any) {
@@ -161,6 +206,83 @@ export async function createJobEntries(
         result.errors.push(`Job creation error for ${displayName}: ${e.message}`);
       }
     }
+  }
+
+  return result;
+}
+
+export async function deleteWorkOrderEntries(
+  workOrderNumber: string
+): Promise<DeleteResult> {
+  const pb = await authenticatePB();
+  const { collections } = PB_CONFIG;
+
+  const result: DeleteResult = {
+    deletedJobs: 0,
+    deletedRoutes: 0,
+    deletedMachines: 0,
+    deletedConsolidateEntries: 0,
+    errors: [],
+  };
+
+  try {
+    // 1. Delete erpConsolidateData entries
+    const erpRecords = await pb
+      .collection(collections.erpConsolidateData)
+      .getFullList({ filter: `BOM_WORKORDER_BASE_ID="${workOrderNumber}"` });
+    for (const rec of erpRecords) {
+      try {
+        await pb.collection(collections.erpConsolidateData).delete(rec.id);
+        result.deletedConsolidateEntries++;
+      } catch (e: any) {
+        result.errors.push(`Delete ERP entry ${rec.id}: ${e.message}`);
+      }
+    }
+
+    // 2. Find all jobs for this work order
+    const jobRecords = await pb
+      .collection(collections.job)
+      .getFullList({ filter: `workOrderNumber="${workOrderNumber}"` });
+
+    for (const job of jobRecords) {
+      // 3. Find routes for this job
+      const routes = await pb
+        .collection(collections.jobProductReceipeRoutes)
+        .getFullList({ filter: `jobId="${job.id}"` });
+
+      for (const route of routes) {
+        // 4. Delete machines for this route
+        const machines = await pb
+          .collection(collections.receipeRouteMachines)
+          .getFullList({ filter: `jobreceipeId="${route.id}"` });
+        for (const machine of machines) {
+          try {
+            await pb.collection(collections.receipeRouteMachines).delete(machine.id);
+            result.deletedMachines++;
+          } catch (e: any) {
+            result.errors.push(`Delete machine ${machine.id}: ${e.message}`);
+          }
+        }
+
+        // Delete route
+        try {
+          await pb.collection(collections.jobProductReceipeRoutes).delete(route.id);
+          result.deletedRoutes++;
+        } catch (e: any) {
+          result.errors.push(`Delete route ${route.id}: ${e.message}`);
+        }
+      }
+
+      // Delete job
+      try {
+        await pb.collection(collections.job).delete(job.id);
+        result.deletedJobs++;
+      } catch (e: any) {
+        result.errors.push(`Delete job ${job.id}: ${e.message}`);
+      }
+    }
+  } catch (e: any) {
+    result.errors.push(`Delete operation failed: ${e.message}`);
   }
 
   return result;

@@ -1,12 +1,12 @@
 import { useState, useMemo } from "react";
 import { PB_CONFIG } from "@/config/pocketbase";
-import { createJobEntries } from "@/services/jobService";
+import { createJobEntries, deleteWorkOrderEntries } from "@/services/jobService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Package, Layers, Cog, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Loader2, Package, Layers, Cog, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
 
 const JobRoutingForm = () => {
   const [workOrderSuffix, setWorkOrderSuffix] = useState("");
@@ -15,6 +15,8 @@ const JobRoutingForm = () => {
   const [custOrderId, setCustOrderId] = useState("");
   const [custOrderLineNo, setCustOrderLineNo] = useState<number | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteWorkOrderSuffix, setDeleteWorkOrderSuffix] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [result, setResult] = useState<{
@@ -435,6 +437,82 @@ const JobRoutingForm = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Delete Work Order Section */}
+        <Card className="border-destructive/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg text-destructive">
+              <Trash2 className="w-5 h-5" />
+              Delete Work Order Entries
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Enter a work order number to delete all related entries (ERP, jobs, routes, machines)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-3">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="deleteWO" className="text-sm font-semibold">
+                  Work Order Number
+                </Label>
+                <div className="flex items-center gap-0">
+                  <span className="inline-flex items-center px-4 h-10 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium whitespace-nowrap">
+                    {PB_CONFIG.workOrderPrefix}
+                  </span>
+                  <Input
+                    id="deleteWO"
+                    value={deleteWorkOrderSuffix}
+                    onChange={(e) => setDeleteWorkOrderSuffix(e.target.value)}
+                    placeholder="Enter work order to delete"
+                    className="rounded-l-none"
+                    disabled={isDeleting}
+                  />
+                </div>
+              </div>
+              <Button
+                variant="destructive"
+                disabled={isDeleting || !deleteWorkOrderSuffix.trim()}
+                onClick={async () => {
+                  const fullWO = `${PB_CONFIG.workOrderPrefix}${deleteWorkOrderSuffix.trim()}`;
+                  if (!confirm(`Are you sure you want to delete ALL entries for ${fullWO}? This cannot be undone.`)) return;
+                  setIsDeleting(true);
+                  try {
+                    const res = await deleteWorkOrderEntries(fullWO);
+                    const total = res.deletedConsolidateEntries + res.deletedJobs + res.deletedRoutes + res.deletedMachines;
+                    if (total === 0) {
+                      toast.info(`No entries found for ${fullWO}`);
+                    } else {
+                      toast.success(
+                        `Deleted: ${res.deletedConsolidateEntries} ERP, ${res.deletedJobs} jobs, ${res.deletedRoutes} routes, ${res.deletedMachines} machines`
+                      );
+                    }
+                    if (res.errors.length > 0) {
+                      toast.warning(`${res.errors.length} error(s) during deletion`);
+                    }
+                    setDeleteWorkOrderSuffix("");
+                  } catch (e: any) {
+                    toast.error(`Delete failed: ${e.message}`);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="font-semibold"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete All
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Operations Reference */}
         <Card>
