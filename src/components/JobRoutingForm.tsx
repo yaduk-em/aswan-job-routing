@@ -1,14 +1,16 @@
 import { useState, useMemo } from "react";
-import { PB_CONFIG } from "@/config/pocketbase";
+import { PB_CONFIG, type Instance } from "@/config/pocketbase";
 import { createJobEntries, deleteWorkOrderEntries } from "@/services/jobService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { Loader2, Package, Layers, Cog, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
 
 const JobRoutingForm = () => {
+  const [instance, setInstance] = useState<Instance>("DEV");
   const [workOrderSuffix, setWorkOrderSuffix] = useState("");
   const [numberOfSubIds, setNumberOfSubIds] = useState<number | "">("");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -118,6 +120,7 @@ const JobRoutingForm = () => {
         custOrderId,
         custOrderLineNo: Number(custOrderLineNo),
         custOrderWantDate,
+        instance,
       });
       setResult(res);
 
@@ -156,6 +159,34 @@ const JobRoutingForm = () => {
           </div>
         </div>
       </header>
+
+      {/* Instance Selector */}
+      <div className="w-full px-6 lg:px-10 pt-6">
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-6">
+              <Label className="font-semibold text-sm">Instance:</Label>
+              <RadioGroup
+                value={instance}
+                onValueChange={(val) => setInstance(val as Instance)}
+                className="flex items-center gap-6"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="DEV" id="instance-dev" />
+                  <Label htmlFor="instance-dev" className="cursor-pointer font-medium">DEV</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="UAT" id="instance-uat" />
+                  <Label htmlFor="instance-uat" className="cursor-pointer font-medium">UAT</Label>
+                </div>
+              </RadioGroup>
+              <span className="text-xs text-muted-foreground ml-2">
+                {instance === "DEV" ? "ASWNDUBAI" : "ASWNUAT"} collections
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Main Content */}
       <main className="w-full px-6 lg:px-10 py-6 space-y-5">
@@ -506,7 +537,7 @@ const JobRoutingForm = () => {
                   if (!confirm(`Are you sure you want to delete ALL entries for ${fullWO}? This cannot be undone.`)) return;
                   setIsDeleting(true);
                   try {
-                    const res = await deleteWorkOrderEntries(fullWO);
+                    const res = await deleteWorkOrderEntries(fullWO, instance);
                     const total = res.deletedConsolidateEntries + res.deletedJobs + res.deletedRoutes + res.deletedMachines;
                     if (total === 0) {
                       toast.info(`No entries found for ${fullWO}`);

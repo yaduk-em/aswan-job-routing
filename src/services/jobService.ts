@@ -1,5 +1,5 @@
 import { authenticatePB } from "@/lib/pocketbase";
-import { PB_CONFIG } from "@/config/pocketbase";
+import { PB_CONFIG, getCollections, type Instance } from "@/config/pocketbase";
 
 interface SubIdEntry {
   subId: string;
@@ -40,6 +40,7 @@ interface JobCreationInput {
   custOrderId: string;
   custOrderLineNo: number;
   custOrderWantDate: string;
+  instance?: Instance;
 }
 
 interface CreationResult {
@@ -62,7 +63,8 @@ export async function createJobEntries(
   input: JobCreationInput
 ): Promise<CreationResult> {
   const pb = await authenticatePB();
-  const { collections, operations } = PB_CONFIG;
+  const collections = getCollections(input.instance || "DEV");
+  const { operations } = PB_CONFIG;
 
   const result: CreationResult = {
     totalJobs: 0,
@@ -313,10 +315,11 @@ export async function createJobEntries(
 }
 
 export async function deleteWorkOrderEntries(
-  workOrderNumber: string
+  workOrderNumber: string,
+  instance: Instance = "DEV"
 ): Promise<DeleteResult> {
   const pb = await authenticatePB();
-  const { collections } = PB_CONFIG;
+  const collections = getCollections(instance);
 
   const result: DeleteResult = {
     deletedJobs: 0,

@@ -3,6 +3,36 @@
 // Change these values to point to your PocketBase instance
 // ============================================================
 
+export type Instance = "DEV" | "UAT";
+
+const INSTANCE_CONFIG: Record<Instance, { companyCode: string; plantCode: string; collectionPrefix: string }> = {
+  DEV: {
+    companyCode: "ASWANDUBAI",
+    plantCode: "ASWNDUBAI",
+    collectionPrefix: "ASWNDUBAI",
+  },
+  UAT: {
+    companyCode: "ASWANUAT",
+    plantCode: "ASWNUAT",
+    collectionPrefix: "ASWNUAT",
+  },
+};
+
+export function getCollections(instance: Instance) {
+  const prefix = INSTANCE_CONFIG[instance].collectionPrefix;
+  return {
+    job: `${prefix}_Job`,
+    jobProductReceipeRoutes: `${prefix}_jobProductReceipeRoutes`,
+    receipeRouteMachines: `${prefix}_receipeRouteMachines`,
+    machineMaster: `${prefix}_machineMaster`,
+    erpConsolidateData: `${prefix}_erpConsolidateData`,
+  };
+}
+
+export function getInstanceConfig(instance: Instance) {
+  return INSTANCE_CONFIG[instance];
+}
+
 export const PB_CONFIG = {
   // PocketBase server URL
   url: "https://pb.dev.industryapps.net/ASWN",
@@ -13,14 +43,8 @@ export const PB_CONFIG = {
     password: "Linux@1994",
   },
 
-  // Collection names - change these if your collections have different names
-  collections: {
-    job: "ASWNDUBAI_Job",
-    jobProductReceipeRoutes: "ASWNDUBAI_jobProductReceipeRoutes",
-    receipeRouteMachines: "ASWNDUBAI_receipeRouteMachines",
-    machineMaster: "ASWNDUBAI_machineMaster",
-    erpConsolidateData: "ASWNDUBAI_erpConsolidateData",
-  },
+  // Default collections (DEV)
+  collections: getCollections("DEV"),
 
   // Work order prefix
   workOrderPrefix: "IA-2026-",
