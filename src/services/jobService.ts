@@ -288,6 +288,8 @@ export async function createJobEntries(
                 cycleTime,
                 isRunning: false,
                 isPriority: false,
+                setupHrs: String(Math.floor(Math.random() * 5)),
+                jobId: jobRecord.id,
               });
               result.totalMachines++;
             } catch (e: any) {
