@@ -48,6 +48,7 @@ interface CreationResult {
   totalRoutes: number;
   totalMachines: number;
   totalConsolidateEntries: number;
+  totalDependencies: number;
   errors: string[];
 }
 
@@ -56,6 +57,7 @@ interface DeleteResult {
   deletedRoutes: number;
   deletedMachines: number;
   deletedConsolidateEntries: number;
+  deletedDependencies: number;
   errors: string[];
 }
 
@@ -71,6 +73,7 @@ export async function createJobEntries(
     totalRoutes: 0,
     totalMachines: 0,
     totalConsolidateEntries: 0,
+    totalDependencies: 0,
     errors: [],
   };
 
@@ -208,26 +211,29 @@ export async function createJobEntries(
     }
   }
 
+  // Track created job record IDs by subId and index for dependency linking
+  // jobRecordsBySubId[subId] = [jobRecordId_for_qty1, jobRecordId_for_qty2, ...]
+  const jobRecordsBySubId: Record<string, string[]> = {};
+
   for (const entry of input.subIdEntries) {
     const { subId, quantity } = entry;
+    jobRecordsBySubId[subId] = [];
 
     // Create individual job entries (1 qty each)
     for (let q = 1; q <= quantity; q++) {
       const displayName = `${input.workOrderNumber}-${subId} (${q}/${quantity})`;
 
       try {
-        // Step 1: Create job in ASWNDUBAI_Job
+        // Step 1: Create job in Job collection
         const jobRecord = await pb.collection(collections.job).create({
           workOrderNumber: input.workOrderNumber,
           subId: String(subId),
           jobQty: "1",
           displayName,
-          // Product info
           productCode: `PROD-${input.workOrderNumber}-${subId}`,
           productDescription: `Product for ${input.workOrderNumber}-${subId}`,
           productType: "Standard",
           partId: `PART-${input.workOrderNumber}-${subId}`,
-          // Dates
           creationDate: today,
           lastUpdateDate: today,
           orderStartDate: today,
@@ -236,24 +242,21 @@ export async function createJobEntries(
           preferedDeliveryDate: today,
           syncTimestamp: new Date(),
           jobCompletionDate: null,
-          // Sales order info (from input)
           salesOrderNumber: input.custOrderId,
           soLineNumber: String(input.custOrderLineNo),
           salesOrderLineNumber: String(input.custOrderLineNo),
           salesOrderQuantity: String(quantity),
-          // Customer info
           customerName: `Customer-${input.custOrderId}`,
           customerNumber: `CUST-${input.custOrderId}`,
-          // Status fields
           jobStatus: "Created",
           isInProgress: false,
           isCompleted: false,
           syncStatus: "Pending",
-          // Additional fields
           drawingTag: "",
           serialNumber: "",
         });
         result.totalJobs++;
+        jobRecordsBySubId[subId].push(jobRecord.id);
 
         // Step 2: Create 5 operation routes for this job
         for (let i = 0; i < operations.length; i++) {
@@ -278,8 +281,7 @@ export async function createJobEntries(
               });
             result.totalRoutes++;
 
-            // Step 3: Create machine entry for this route
-            const cycleTime = String(Math.floor(Math.random() * 11)); // 0-10
+            const cycleTime = String(Math.floor(Math.random() * 11));
             const machineRefId = machineRecordMap[op.machineId] || "";
 
             try {
@@ -311,6 +313,45 @@ export async function createJobEntries(
     }
   }
 
+  // Step 4: Create jobDependencies for subId 0 jobs
+  // Each subId 0 job depends on corresponding jobs from other subIds
+  // Other subId quantities are multipliers of subId 0 quantity
+  const subId0Jobs = jobRecordsBySubId["0"] || [];
+  const subId0Qty = subId0Jobs.length;
+
+  if (subId0Qty > 0) {
+    for (let idx = 0; idx < subId0Qty; idx++) {
+      const dependsOnJobIds: string[] = [];
+
+      for (const entry of input.subIdEntries) {
+        if (entry.subId === "0") continue;
+        const otherJobs = jobRecordsBySubId[entry.subId] || [];
+        const multiplier = Math.floor(otherJobs.length / subId0Qty);
+
+        // Assign `multiplier` jobs from this subId to this subId-0 job
+        const startIdx = idx * multiplier;
+        const endIdx = startIdx + multiplier;
+        for (let j = startIdx; j < endIdx && j < otherJobs.length; j++) {
+          dependsOnJobIds.push(otherJobs[j]);
+        }
+      }
+
+      if (dependsOnJobIds.length > 0) {
+        try {
+          await pb.collection(collections.jobDependencies).create({
+            jobId: subId0Jobs[idx],
+            dependsOnJobIds,
+          });
+          result.totalDependencies++;
+        } catch (e: any) {
+          result.errors.push(
+            `Dependency error for subId 0 job index ${idx}: ${e.message}`
+          );
+        }
+      }
+    }
+  }
+
   return result;
 }
 
@@ -326,6 +367,7 @@ export async function deleteWorkOrderEntries(
     deletedRoutes: 0,
     deletedMachines: 0,
     deletedConsolidateEntries: 0,
+    deletedDependencies: 0,
     errors: [],
   };
 
@@ -349,13 +391,30 @@ export async function deleteWorkOrderEntries(
       .getFullList({ filter: `workOrderNumber="${workOrderNumber}"` });
 
     for (const job of jobRecords) {
-      // 3. Find routes for this job
+      // 3. Delete jobDependencies for this job
+      try {
+        const deps = await pb
+          .collection(collections.jobDependencies)
+          .getFullList({ filter: `jobId="${job.id}"` });
+        for (const dep of deps) {
+          try {
+            await pb.collection(collections.jobDependencies).delete(dep.id);
+            result.deletedDependencies++;
+          } catch (e: any) {
+            result.errors.push(`Delete dependency ${dep.id}: ${e.message}`);
+          }
+        }
+      } catch (e: any) {
+        // Ignore if collection doesn't exist or no records
+      }
+
+      // 4. Find routes for this job
       const routes = await pb
         .collection(collections.jobProductReceipeRoutes)
         .getFullList({ filter: `jobId="${job.id}"` });
 
       for (const route of routes) {
-        // 4. Delete machines for this route
+        // 5. Delete machines for this route
         const machines = await pb
           .collection(collections.receipeRouteMachines)
           .getFullList({ filter: `jobreceipeId="${route.id}"` });

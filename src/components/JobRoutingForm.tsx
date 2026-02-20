@@ -27,6 +27,7 @@ const JobRoutingForm = () => {
     totalRoutes: number;
     totalMachines: number;
     totalConsolidateEntries: number;
+    totalDependencies: number;
     errors: string[];
   } | null>(null);
 
@@ -126,7 +127,7 @@ const JobRoutingForm = () => {
 
       if (res.errors.length === 0) {
         toast.success(
-          `Created ${res.totalConsolidateEntries} ERP entries, ${res.totalJobs} jobs, ${res.totalRoutes} routes, ${res.totalMachines} machines`
+          `Created ${res.totalConsolidateEntries} ERP entries, ${res.totalJobs} jobs, ${res.totalRoutes} routes, ${res.totalMachines} machines, ${res.totalDependencies} dependencies`
         );
       } else {
         toast.warning(`Completed with ${res.errors.length} warning(s)`);
@@ -454,7 +455,7 @@ const JobRoutingForm = () => {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="text-center p-3 rounded-lg bg-muted">
                   <p className="text-2xl font-bold">
                     {result.totalJobs}
@@ -473,6 +474,14 @@ const JobRoutingForm = () => {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Machine Entries
+                  </p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-muted">
+                  <p className="text-2xl font-bold">
+                    {result.totalDependencies}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Dependencies
                   </p>
                 </div>
               </div>
@@ -506,7 +515,7 @@ const JobRoutingForm = () => {
               Delete Work Order Entries
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Enter a work order number to delete all related entries (ERP, jobs, routes, machines)
+              Enter a work order number to delete all related entries (ERP, jobs, routes, machines, dependencies)
             </p>
           </CardHeader>
           <CardContent>
