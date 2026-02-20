@@ -26,6 +26,7 @@ export function getCollections(instance: Instance) {
     receipeRouteMachines: `${prefix}_receipeRouteMachines`,
     machineMaster: `${prefix}_machineMaster`,
     erpConsolidateData: `${prefix}_erpConsolidateData`,
+    jobDependencies: `${prefix}_jobDependencies`,
   };
 }
 
